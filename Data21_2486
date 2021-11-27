@@ -1,24 +1,24 @@
 library(tm)
 library(SnowballC)
 library(topicmodels)
-#设置工作目录（根据需要修改路径）
+#Set the working directory (modify the path as needed)
 setwd("C:\\Myproject_LDA\\database6\\data21_2486") 
-#加载文档到语料库
-#获取目录中的.txt文件列表
+#Load documents into the corpus
+#Get a list of .txt files in the directory
 filenames <- list.files(getwd(),pattern="*.txt")
-#将文件读入字符向量
+#Read file into character vector
 files <- lapply(filenames,readLines,encoding="UTF-8")
-#创建矢量语料库
+#Create a vector corpus
 articles.corpus <- VCorpus(VectorSource(files))
-# 将每个字母变成小写
+# Make each letter lowercase
 articles.corpus <- tm_map(articles.corpus, content_transformer ( tolower ))
-# 删除标点符号
+# Remove punctuation
 articles.corpus <- tm_map(articles.corpus, removePunctuation)
-#删除数字
+# Remove number
 articles.corpus <- tm_map(articles.corpus, removeNumbers);
-#删除空白格
+# Delete blanks
 articles.corpus <- tm_map(articles.corpus, stripWhitespace);
-# 删除通用和自定义的停用词
+# Remove general and custom stop words
 stopword <- c(stopwords('english'),"patient","women","cancer","ti","ab","can","one","and","like","just","gonna","know","really","right","going","get","well","lot","actually","new",
               "will","much","way","and","see","make","look",
               "also","able","say","back","got","take","great",
@@ -53,7 +53,7 @@ freq[ord]
 findFreqTerms(articleDtm,lowfreq = 600)
 write.csv(freq[ord],"word_freq.csv")
 
-#histogram 直方图
+#histogram
 wf= data.frame(term=names(freq),occurrences=freq)
 library(ggplot2)
 p <- ggplot(subset(wf,freq>800),aes(term,occurrences))
@@ -61,7 +61,7 @@ p <- p + geom_bar(stat="identity")
 p <- p + theme(axis.text.x = element_text(angle = 45,hjust = 1))
 p
 
-#wordcloud 云图
+#wordcloud
 library(wordcloud)
 set.seed(123)
 #limit words by specifying min frequency
@@ -69,7 +69,7 @@ wordcloud(names(freq),freq,min.freq = 750)
 wordcloud(names(freq),freq,min.freq = 750,color = brewer.pal(6,"Dark2"))
 
 
-#LDA 模型
+#LDA topic model
 # Load topic models library
 library(topicmodels)
 library(quantreg)
@@ -78,15 +78,31 @@ set.seed(123)
 m = LDA(articleDtm, method = "Gibbs", k = 7,  control = list(alpha = 0.1))
 m
 
-#输出各个topic频率最高的词
+# Output the most frequent words of each topic
 terms(m,10)
 
 
-# Top N terms in each topic  输出矩阵
+# Top N terms in each topic 
 ldaOut.terms <- as.matrix(terms(m,1900))
 write.csv(ldaOut.terms,file=paste("LDAGibbs",k=7,"TopicsToTerms.csv"))
 
-# create the visualization beta图可视化
+
+#LDA visualization
+library(LDAvis)   
+
+articleDtm = articleDtm[slam::row_sums(articleDtm) > 0, ]
+phi = as.matrix(posterior(m)$terms)
+theta <- as.matrix(posterior(m)$topics)
+vocab <- colnames(phi)
+doc.length = slam::row_sums(articleDtm)
+term.freq = slam::col_sums(articleDtm)[match(vocab, colnames(articleDtm))]
+
+json = createJSON(phi = phi, theta = theta, vocab = vocab,
+                  doc.length = doc.length, term.frequency = term.freq)
+serVis(json)
+
+
+################## create the beta visualization: this part is a kind of similar with the content I showed before, so I didn't put the beta value in the report.
 library(tidytext)
 
 ap_topics <- tidy(m, matrix = "beta")
@@ -115,22 +131,4 @@ beta_spread <- ap_topics %>%
   mutate(log_ratio = log2(topic2 / topic1))
 
 write.csv(beta_spread,"beta_spread.csv")
-
-
-
-#LDA可视化结果
-library(LDAvis)   
-
-articleDtm = articleDtm[slam::row_sums(articleDtm) > 0, ]
-phi = as.matrix(posterior(m)$terms)
-theta <- as.matrix(posterior(m)$topics)
-vocab <- colnames(phi)
-doc.length = slam::row_sums(articleDtm)
-term.freq = slam::col_sums(articleDtm)[match(vocab, colnames(articleDtm))]
-
-json = createJSON(phi = phi, theta = theta, vocab = vocab,
-                  doc.length = doc.length, term.frequency = term.freq)
-serVis(json)
-
-
 
