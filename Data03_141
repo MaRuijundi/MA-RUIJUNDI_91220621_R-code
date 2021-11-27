@@ -73,6 +73,7 @@ wordcloud(names(freq),freq,min.freq = 38,color = brewer.pal(6,"Dark2"))
 # Load topic models library
 library(topicmodels)
 library(quantreg)
+library(SparseM)
 
 set.seed(123)
 m = LDA(articleDtm, method = "Gibbs", k = 4,  control = list(alpha = 0.1))
